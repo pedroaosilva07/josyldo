@@ -4,11 +4,14 @@ import bcrypt from 'bcryptjs';
 import { queryOne, run } from './db';
 
 // Tipos
+export type Role = 'USER' | 'ADMIN';
+
 export interface User {
     id: string;
     username: string;
     password_hash: string;
     nome_completo: string | null;
+    role: Role;
     created_at: string;
 }
 
@@ -16,6 +19,7 @@ export interface Session {
     userId: string;
     username: string;
     nomeCompleto: string | null;
+    role: Role;
 }
 
 const SESSION_COOKIE = 'josyldo_session';
@@ -54,18 +58,28 @@ export function getUserById(id: string): User | undefined {
 export async function createUser(
     username: string,
     password: string,
-    nomeCompleto?: string
+    nomeCompleto?: string,
+    role: Role = 'USER'
 ): Promise<User> {
     const id = uuidv4();
     const passwordHash = await hashPassword(password);
 
     run(
-        `INSERT INTO users (id, username, password_hash, nome_completo) 
-         VALUES (?, ?, ?, ?)`,
-        [id, username, passwordHash, nomeCompleto || null]
+        `INSERT INTO users (id, username, password_hash, nome_completo, role) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [id, username, passwordHash, nomeCompleto || null, role]
     );
 
     return getUserById(id) as User;
+}
+
+// Inicializa Admin Padrão (Seed)
+async function ensureAdminUser() {
+    const admin = getUserByUsername('admin');
+    if (!admin) {
+        console.log('Criando usuário admin padrão...');
+        await createUser('admin', 'pedro', 'Administrador', 'ADMIN');
+    }
 }
 
 // ====================================
@@ -74,7 +88,6 @@ export async function createUser(
 
 export async function createSession(user: User): Promise<string> {
     const sessionId = uuidv4();
-    // Data de expiração no formato ISO string para SQLite
     const expiresAt = new Date(Date.now() + SESSION_DURATION * 1000).toISOString();
 
     run(
@@ -82,7 +95,6 @@ export async function createSession(user: User): Promise<string> {
         [sessionId, user.id, expiresAt]
     );
 
-    // Define o cookie
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE, sessionId, {
         httpOnly: true,
@@ -103,14 +115,14 @@ export async function getSession(): Promise<Session | null> {
         return null;
     }
 
-    // Busca sessão no banco e faz join com user
     const result = queryOne<{
         user_id: string;
         username: string;
         nome_completo: string | null;
+        role: Role;
         expires_at: string;
     }>(
-        `SELECT s.user_id, s.expires_at, u.username, u.nome_completo 
+        `SELECT s.user_id, s.expires_at, u.username, u.nome_completo, u.role
          FROM sessions s
          JOIN users u ON s.user_id = u.id
          WHERE s.id = ?`,
@@ -121,7 +133,6 @@ export async function getSession(): Promise<Session | null> {
         return null; // Sessão inválida
     }
 
-    // Verifica se expirou
     if (new Date(result.expires_at) < new Date()) {
         run('DELETE FROM sessions WHERE id = ?', [sessionId]);
         return null;
@@ -130,7 +141,8 @@ export async function getSession(): Promise<Session | null> {
     return {
         userId: result.user_id,
         username: result.username,
-        nomeCompleto: result.nome_completo
+        nomeCompleto: result.nome_completo,
+        role: result.role || 'USER' // Fallback para USER se nulo
     };
 }
 
@@ -158,10 +170,23 @@ export async function requireAuth(): Promise<Session> {
     return session;
 }
 
+export async function requireAdmin(): Promise<Session> {
+    const session = await requireAuth();
+    if (session.role !== 'ADMIN') {
+        throw new Error('Acesso negado: Requer privilégios de administrador');
+    }
+    return session;
+}
+
 export async function validateCredentials(
     username: string,
     password: string
 ): Promise<User | null> {
+    // Garante que o admin exista ao tentar login (Forma preguiçosa de rodar o seed)
+    if (username === 'admin') {
+        await ensureAdminUser();
+    }
+
     const user = getUserByUsername(username);
 
     if (!user) {

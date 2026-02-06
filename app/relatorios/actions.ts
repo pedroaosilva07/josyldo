@@ -49,6 +49,7 @@ export interface RelatorioDetalhado {
         nome_original: string;
     }>;
     duracao_minutos: number | null;
+    nome_funcionario: string | null;
 }
 
 // ====================================
@@ -207,6 +208,7 @@ export async function buscarDetalhesRegistroAction(pontoEntradaId: string): Prom
         atividades,
         midias_entrada,
         midias_saida,
-        duracao_minutos
+        duracao_minutos,
+        nome_funcionario: session.nomeCompleto || session.username
     };
 }

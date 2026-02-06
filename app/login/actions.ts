@@ -24,10 +24,12 @@ export async function loginAction(formData: FormData) {
         await createSession(user);
 
         // Retorna sucesso (o redirect será feito pelo cliente)
+        const redirectTo = user.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard';
+
         return {
             success: true,
             message: `Bem-vindo, ${user.nome_completo || user.username}!`,
-            redirectTo: '/dashboard'
+            redirectTo
         };
     } catch (error: any) {
         console.error('Erro no login:', error);

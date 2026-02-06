@@ -105,76 +105,123 @@ export default function Relatorios() {
 
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        let y = 20;
 
-        // Título
-        doc.setFontSize(20);
+        // --- Helper de Imagem ---
+        const carregarImagem = (url: string): Promise<{ base64: string, ratio: number }> => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.drawImage(img, 0, 0);
+                        resolve({
+                            base64: canvas.toDataURL('image/jpeg', 0.8),
+                            ratio: img.width / img.height
+                        });
+                    } else {
+                        reject(new Error('Erro ao criar context canvas'));
+                    }
+                };
+                img.onerror = () => reject(new Error(`Erro ao carregar imagem: ${url}`));
+                img.src = url;
+            });
+        };
+
+        const checkPageBreak = (heightNeeded: number) => {
+            if (y + heightNeeded > pageHeight - margin) {
+                doc.addPage();
+                y = margin;
+                return true;
+            }
+            return false;
+        };
+
+        // --- Cabeçalho ---
+        doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
-        doc.text('Relatório de Serviço', pageWidth / 2, 20, { align: 'center' });
+        doc.text('Relatório de Serviço', pageWidth / 2, y, { align: 'center' });
+        y += 10;
 
-        // Data do relatório
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth / 2, 28, { align: 'center' });
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth / 2, y, { align: 'center' });
+        y += 8;
 
-        // Linha divisória
+        if (detalhesCompletos.nome_funcionario) {
+            doc.setFontSize(11);
+            doc.text(`Funcionário: ${detalhesCompletos.nome_funcionario}`, pageWidth / 2, y, { align: 'center' });
+            y += 8;
+        }
+
         doc.setLineWidth(0.5);
-        doc.line(20, 32, pageWidth - 20, 32);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 10;
 
-        // Informações de Entrada
+        // --- Entrada ---
+        checkPageBreak(40);
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text('📥 Entrada', 20, 42);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Entrada', margin, y); // Removido emoji
+        y += 8;
 
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
-        let y = 50;
-        doc.text(`Data/Hora: ${new Date(detalhesCompletos.entrada.data_hora).toLocaleString('pt-BR')}`, 25, y);
-        y += 7;
-        if (detalhesCompletos.entrada.endereco) {
-            const endereco = detalhesCompletos.entrada.endereco;
-            const linhasEndereco = doc.splitTextToSize(`Local: ${endereco}`, pageWidth - 50);
-            doc.text(linhasEndereco, 25, y);
-            y += linhasEndereco.length * 6 + 3;
-        }
-        if (detalhesCompletos.entrada.latitude && detalhesCompletos.entrada.longitude) {
-            doc.text(`Coordenadas: ${detalhesCompletos.entrada.latitude.toFixed(6)}, ${detalhesCompletos.entrada.longitude.toFixed(6)}`, 25, y);
-            y += 7;
-        }
+        doc.text(`Data/Hora: ${new Date(detalhesCompletos.entrada.data_hora).toLocaleString('pt-BR')}`, margin + 5, y);
+        y += 6;
 
-        // Informações de Saída
+        if (detalhesCompletos.entrada.endereco) {
+            const linhas = doc.splitTextToSize(`Local: ${detalhesCompletos.entrada.endereco}`, pageWidth - margin * 2 - 5);
+            doc.text(linhas, margin + 5, y);
+            y += linhas.length * 6;
+        } else if (detalhesCompletos.entrada.latitude) {
+            doc.text(`Coords: ${detalhesCompletos.entrada.latitude}, ${detalhesCompletos.entrada.longitude}`, margin + 5, y);
+            y += 6;
+        }
+        y += 4;
+
+        // --- Saída ---
         if (detalhesCompletos.saida) {
-            y += 5;
+            checkPageBreak(40);
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
-            doc.text('📤 Saída', 20, y);
+            doc.text('Saída', margin, y); // Removido emoji
             y += 8;
 
             doc.setFontSize(11);
             doc.setFont('helvetica', 'normal');
-            doc.text(`Data/Hora: ${new Date(detalhesCompletos.saida.data_hora).toLocaleString('pt-BR')}`, 25, y);
-            y += 7;
+            doc.text(`Data/Hora: ${new Date(detalhesCompletos.saida.data_hora).toLocaleString('pt-BR')}`, margin + 5, y);
+            y += 6;
+
             if (detalhesCompletos.saida.endereco) {
-                const endereco = detalhesCompletos.saida.endereco;
-                const linhasEndereco = doc.splitTextToSize(`Local: ${endereco}`, pageWidth - 50);
-                doc.text(linhasEndereco, 25, y);
-                y += linhasEndereco.length * 6 + 3;
+                const linhas = doc.splitTextToSize(`Local: ${detalhesCompletos.saida.endereco}`, pageWidth - margin * 2 - 5);
+                doc.text(linhas, margin + 5, y);
+                y += linhas.length * 6;
             }
 
-            // Duração
             if (detalhesCompletos.duracao_minutos !== null) {
+                y += 2;
                 doc.setFont('helvetica', 'bold');
-                doc.text(`Duração Total: ${formatarDuracao(detalhesCompletos.duracao_minutos)}`, 25, y);
-                y += 10;
+                doc.text(`Duração Total: ${formatarDuracao(detalhesCompletos.duracao_minutos)}`, margin + 5, y);
+                y += 8;
             }
+            y += 4;
         }
 
-        // Atividades
+        // --- Atividades ---
         if (detalhesCompletos.atividades.length > 0) {
-            y += 5;
+            checkPageBreak(30);
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
-            doc.text('📋 Atividades Realizadas', 20, y);
-            y += 3;
+            doc.text('Atividades Realizadas', margin, y);
+            y += 6;
 
             autoTable(doc, {
                 startY: y,
@@ -185,28 +232,72 @@ export default function Relatorios() {
                     new Date(a.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
                 ]),
                 theme: 'striped',
-                headStyles: { fillColor: [25, 118, 210] },
-                margin: { left: 20, right: 20 }
+                headStyles: { fillColor: [40, 40, 40] },
+                margin: { left: margin, right: margin }
             });
+
+            y = (doc as any).lastAutoTable.finalY + 10;
         }
 
-        // Mídias
-        const totalMidias = detalhesCompletos.midias_entrada.length + detalhesCompletos.midias_saida.length;
-        if (totalMidias > 0) {
-            const finalY = (doc as any).lastAutoTable?.finalY || y + 20;
-            doc.setFontSize(12);
+        // --- Mídias (Imagens) ---
+        const todasMidias = [...detalhesCompletos.midias_entrada, ...detalhesCompletos.midias_saida];
+        const fotos = todasMidias.filter(m => m.tipo === 'FOTO');
+
+        if (fotos.length > 0) {
+            checkPageBreak(30);
+            doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
-            doc.text(`📷 Mídias Anexadas: ${totalMidias} arquivo(s)`, 20, finalY + 10);
+            doc.text(`Fotos Anexadas (${fotos.length})`, margin, y);
+            y += 10;
+
+            for (const foto of fotos) {
+                try {
+                    const { base64, ratio } = await carregarImagem(foto.caminho_arquivo);
+
+                    // Define largura da imagem (maxpageWidth - margins)
+                    const imgWidth = 100; // Defina um tamanho fixo ou largura da página
+                    // Se quiser ocupar metade da pagina: (pageWidth - margin*2) / 2
+                    // Vamos usar largura fixa de 120mm ou ajustar se for retrato/paisagem
+
+                    // Vamos usar largura disponivel de 150mm (para não ficar enorme)
+                    const displayWidth = 140;
+                    const displayHeight = displayWidth / ratio;
+
+                    checkPageBreak(displayHeight + 10);
+
+                    doc.addImage(base64, 'JPEG', margin, y, displayWidth, displayHeight);
+
+                    // Legenda da foto
+                    y += displayHeight + 2;
+                    doc.setFontSize(9);
+                    doc.setFont('helvetica', 'italic');
+                    const tipoTexto = detalhesCompletos.midias_entrada.some(m => m.id === foto.id) ? "Entrada" : "Saída";
+                    doc.text(`Foto de ${tipoTexto} - ${foto.nome_original}`, margin, y);
+
+                    y += 10; // Espaço para próxima foto
+
+                } catch (err) {
+                    console.error("Erro ao add imagem", err);
+                    checkPageBreak(10);
+                    doc.setFontSize(10);
+                    doc.setTextColor(255, 0, 0);
+                    doc.text(`Erro ao carregar imagem: ${foto.nome_original}`, margin, y);
+                    doc.setTextColor(0, 0, 0);
+                    y += 10;
+                }
+            }
         }
 
         // Rodapé
-        const pageHeight = doc.internal.pageSize.getHeight();
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'italic');
-        doc.text('Este documento é um comprovante oficial de serviço.', pageWidth / 2, pageHeight - 15, { align: 'center' });
-        doc.text('Sistema de Controle de Serviço - Josyldo', pageWidth / 2, pageHeight - 10, { align: 'center' });
+        const totalPages = (doc as any).internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'italic');
+            doc.text('Sistema de Controle de Serviço - Josyldo', pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+        }
 
-        // Salva o PDF
         doc.save(`relatorio_${formatarData(registro.data_hora).replace(/\//g, '-')}.pdf`);
     };
 
