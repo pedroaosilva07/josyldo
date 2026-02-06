@@ -1,10 +1,12 @@
-import Login from "./login/page";
+import { getSession } from "./lib/auth";
+import { redirect } from "next/navigation";
 
+export default async function Home() {
+  const session = await getSession();
 
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-zinc-900">
-      <Login />
-    </div>
-  );
+  if (session) {
+    redirect('/dashboard');
+  } else {
+    redirect('/login');
+  }
 }

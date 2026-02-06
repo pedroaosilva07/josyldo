@@ -1,16 +1,42 @@
-'user client';
+'use server';
 
-import { validateUser } from "../sevices/authService";
+import { validateCredentials, createSession } from "../lib/auth";
 import { redirect } from "next/navigation";
 
-export async function loginAction(formData: FormData){
+export async function loginAction(formData: FormData) {
     const username = formData.get('username') as string;
     const password = formData.get('password') as string;
 
-    try{
-        const user = await validateUser(username, password);
-        return {success: true, message: `Bem-vindo, ${user.username}!`};
-    } catch (error: any) {
-        return {success: false, message: error.message};
+    // Validação básica
+    if (!username || !password) {
+        return { success: false, message: 'Usuário e senha são obrigatórios' };
     }
+
+    try {
+        // Valida credenciais no banco
+        const user = await validateCredentials(username, password);
+
+        if (!user) {
+            return { success: false, message: 'Usuário ou senha inválidos' };
+        }
+
+        // Cria sessão
+        await createSession(user);
+
+        // Retorna sucesso (o redirect será feito pelo cliente)
+        return {
+            success: true,
+            message: `Bem-vindo, ${user.nome_completo || user.username}!`,
+            redirectTo: '/dashboard'
+        };
+    } catch (error: any) {
+        console.error('Erro no login:', error);
+        return { success: false, message: 'Erro interno. Tente novamente.' };
+    }
+}
+
+export async function logoutAction() {
+    const { destroySession } = await import("../lib/auth");
+    await destroySession();
+    redirect('/login');
 }
