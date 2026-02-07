@@ -33,33 +33,34 @@ if (!schemaExists) {
     console.log('✅ Tabelas criadas!');
 }
 
-// Verifica se usuário já existe
-const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get('Pedro');
+// Verifica se usuário Admin já existe
+const existingAdmin = db.prepare('SELECT id FROM users WHERE username = ?').get('Admin');
 
-if (existingUser) {
-    console.log('⚠️  Usuário "Pedro" já existe no banco!');
-    console.log('   Atualizando senha para "123"...');
+if (existingAdmin) {
+    console.log('⚠️  Usuário "Admin" já existe no banco!');
+    console.log('   Atualizando senha para "123456" e garantindo permissão ADMIN...');
 
-    const passwordHash = bcrypt.hashSync('123', 10);
-    db.prepare('UPDATE users SET password_hash = ? WHERE username = ?').run(passwordHash, 'Pedro');
-    console.log('✅ Senha atualizada!');
+    const passwordHash = bcrypt.hashSync('123456', 10);
+    db.prepare('UPDATE users SET password_hash = ?, role = ? WHERE username = ?')
+        .run(passwordHash, 'ADMIN', 'Admin');
+    console.log('✅ Admin atualizado!');
 } else {
-    console.log('🌱 Criando usuário "Pedro"...');
+    console.log('🌱 Criando usuário "Admin"...');
 
-    const passwordHash = bcrypt.hashSync('123', 10);
+    const passwordHash = bcrypt.hashSync('123456', 10);
     const userId = uuidv4();
 
     db.prepare(`
-        INSERT INTO users (id, username, password_hash, nome_completo) 
-        VALUES (?, ?, ?, ?)
-    `).run(userId, 'Pedro', passwordHash, 'Pedro Silva');
+        INSERT INTO users (id, username, password_hash, nome_completo, role) 
+        VALUES (?, ?, ?, ?, ?)
+    `).run(userId, 'Admin', passwordHash, 'Administrador do Sistema', 'ADMIN');
 
-    console.log('✅ Usuário criado com sucesso!');
+    console.log('✅ Usuário Admin criado com sucesso!');
 }
 
 console.log('\n📋 Credenciais:');
-console.log('   Usuário: Pedro');
-console.log('   Senha: 123');
+console.log('   Usuário: Admin');
+console.log('   Senha: 123456');
 console.log('\n🚀 Pronto! Agora você pode fazer login.');
 
 db.close();

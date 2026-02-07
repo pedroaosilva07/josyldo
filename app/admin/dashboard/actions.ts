@@ -1,6 +1,6 @@
 'use server';
 
-import { query } from "../../lib/db";
+import { query, queryOne } from "../../lib/db";
 import { requireAdmin } from "../../lib/auth";
 
 export interface FuncionarioAtivo {
@@ -60,4 +60,17 @@ export async function buscarFuncionariosAtivos(): Promise<FuncionarioAtivo[]> {
     `);
 
     return activePoints;
+}
+// ...existing code...
+
+export async function getDashboardStats() {
+    await requireAdmin();
+
+    const activeUsers = await buscarFuncionariosAtivos();
+    const totalUsers = queryOne<{ count: number }>('SELECT COUNT(*) as count FROM users');
+
+    return {
+        active: activeUsers.length,
+        total: totalUsers?.count || 0
+    };
 }

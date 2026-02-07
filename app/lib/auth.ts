@@ -43,7 +43,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 export function getUserByUsername(username: string): User | undefined {
     return queryOne<User>(
-        'SELECT * FROM users WHERE username = ?',
+        'SELECT * FROM users WHERE username = ? COLLATE NOCASE',
         [username]
     );
 }
@@ -78,7 +78,7 @@ async function ensureAdminUser() {
     const admin = getUserByUsername('admin');
     if (!admin) {
         console.log('Criando usuário admin padrão...');
-        await createUser('admin', 'pedro', 'Administrador', 'ADMIN');
+        await createUser('admin', '123456', 'Administrador', 'ADMIN');
     }
 }
 
@@ -183,7 +183,7 @@ export async function validateCredentials(
     password: string
 ): Promise<User | null> {
     // Garante que o admin exista ao tentar login (Forma preguiçosa de rodar o seed)
-    if (username === 'admin') {
+    if (username.toLowerCase() === 'admin') {
         await ensureAdminUser();
     }
 

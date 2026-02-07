@@ -93,17 +93,15 @@ export default function CapturaLocalizacao({ onLocationCapture, disabled }: Capt
         }
     };
 
-    // Captura automática ao montar
-    useEffect(() => {
-        captureLocation();
-    }, []);
+    // Modificado: Removemos o useEffect de captura automática para exigir interação do usuário,
+    // o que é obrigatório em muitos navegadores móveis para pedir permissão.
 
     return (
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <LocationOn color="primary" />
                 <Typography variant="subtitle1" fontWeight={600}>
-                    Localização
+                    Localização *
                 </Typography>
                 <Box sx={{ flexGrow: 1 }} />
                 <IconButton
@@ -114,6 +112,18 @@ export default function CapturaLocalizacao({ onLocationCapture, disabled }: Capt
                     <Refresh />
                 </IconButton>
             </Box>
+
+            {!location && !loading && !error && (
+                <Button
+                    variant="outlined"
+                    fullWidth
+                    onClick={captureLocation}
+                    startIcon={<MyLocation />}
+                    sx={{ my: 2 }}
+                >
+                    Obter Localização Atual
+                </Button>
+            )}
 
             {loading && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>

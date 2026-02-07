@@ -49,7 +49,8 @@ export default function CapturaMidia({ onMidiasChange, disabled }: CapturaMidiaP
             }
         } catch (err) {
             console.error('Erro ao acessar câmera:', err);
-            alert('Não foi possível acessar a câmera. Verifique as permissões.');
+            console.error('Erro ao acessar câmera:', err);
+            alert('Não foi possível acessar a câmera. \n\nPor favor, verifique se você permitiu o acesso à câmera nas configurações do navegador (ícone de cadeado na barra de endereço).');
             setCameraOpen(false);
         }
     };

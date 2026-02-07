@@ -33,7 +33,7 @@ export async function loginAction(formData: FormData) {
         };
     } catch (error: any) {
         console.error('Erro no login:', error);
-        return { success: false, message: 'Erro interno. Tente novamente.' };
+        return { success: false, message: `Erro interno: ${error.message || 'Desconhecido'}` };
     }
 }
 

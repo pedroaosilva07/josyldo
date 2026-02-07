@@ -161,7 +161,7 @@ export default function Dashboard() {
                     return;
                 }
 
-                setSucesso(result.message);
+                setSucesso(result.message || null);
                 await carregarEstado();
 
                 // Fecha modal após sucesso
